@@ -1,0 +1,118 @@
+name: Windows
+on: 
+  # push代码时触发workflow
+  push:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - '.github/workflows/windows.yml'
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - '.github/workflows/windows.yml' 
+jobs:
+  build:
+    name: Build
+    # 运行平台， windows-latest目前是windows server 2022，但稳定故使用 2019
+    # 参考文档 https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
+    runs-on: windows-2019
+    strategy:
+      # 矩阵配置
+      matrix:
+        # Qt 5.12.10 参考 https://mirrors.cloud.tencent.com/qt/online/qtsdkrepository/windows_x86/desktop/qt5_51210
+        qt_ver: [5.12.10]
+        qt_target: [desktop]
+        include:
+          - qt_arch: win32_msvc2017
+            msvc_arch: x86
+            qt_arch_install: msvc2017
+          # - qt_arch: win64_msvc2017_64
+          #   msvc_arch: x64
+          #   qt_arch_install: msvc2017_64
+    env:
+      targetName: GitHubAction
+      targetOS: windows
+      # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+      
+    steps:
+      # - name: Install Qt
+        # uses: jurplel/install-qt-action@v2.13.0
+        # with:
+          # version: ${{matrix.qt_ver}}
+          # arch: ${{matrix.qt_arch}}
+          # cached: 'false'
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          
+      # - name: pull 3rdparty code
+        # run: |
+          # cd ${{github.workspace}}
+          # git submodule init
+          # git submodule update
+          
+      # - name: cache-msvc-build
+        # id: cache-msvc-build
+        # uses: actions/cache@v1
+        # with:
+            # path: msvc-build-install
+            # key: msvc-build-windows-install
+
+      # - name: msvc-build
+        # if: steps.cache-msvc-build.outputs.cache-hit != 'true'
+        # id: build
+        # shell: cmd
+        # run: |
+          # cd ${{github.workspace}}
+          # mkdir build
+          # cd build
+          # call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.msvc_arch }}
+          # cmake -G "Visual Studio 16 2019" -A Win32 ../src
+          # devenv GitHubAction.sln /Build "Release|Win32"
+          
+          # windeployqt ./Release/${env:targetName}.exe
+          # dir
+           
+          # echo winsdkdir=%windowssdkdir% >> $GITHUB_ENV
+          # echo winsdkver=%windowssdkversion% >> $GITHUB_ENV
+          # echo vctoolsinstalldir=%vctoolsinstalldir% >> $GITHUB_ENV
+          # echo vctoolsredistdir=%vctoolsredistdir% >> $GITHUB_ENV        // 其它系统生效
+          # echo "archiveName=picshot-windows-${{matrix.msvc_arch}}" >> $GITHUB_ENV //win系统才生效
+     
+      - name: setArchiveName
+        id: setArchiveName
+        shell: pwsh
+        run: |
+          $productVersion="${{ github.ref }}".substring("refs/tags/".length)
+          echo "productVersion=$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
+          echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      # tag打为.zip包 
+      - name: package
+        id: package      
+        if: startsWith(github.event.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          cd ${{github.workspace}}/../
+          Compress-Archive -Path ${{ github.workspace }}/* -DestinationPath ${{ env.productNameVersion }}.zip
+          dir
+        
+      
+      # tag上传Release
+      - name: uploadRelease
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.upload_release }}
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            ${{github.workspace}}/../${{ env.productNameVersion }}.zip
+            ${{github.workspace}}/LICENSE
+          tag: ${{github.ref}}
+          overwrite: true 
