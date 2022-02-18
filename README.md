@@ -23,7 +23,7 @@ devenv GitHubAction.sln /Build "Release|Win32"
 添加 "C:\Qt\Qt5.12.11\5.12.11\msvc2017_64\bin" 到 path 后，cmd 执行 echo %PATH% 使其立即生效
 ```
 
-
+<br>
 
 ---
 
@@ -34,13 +34,10 @@ msvc 交叉编译：使用 `vcvarsall.bat` 设置命令行编译环境（[参考
 如果要在 64 位系统下生成 32 位代码，就执行 `vcvarsall x86` 或 `vcvarsall amd64_x86`
 到了 VS2015，已经支持 arm 平台了，所以如果要生成 arm 平台的代码，就执行 `vcvarsall x86_arm` ；如果你的操作系统是 64 位的也可以 `vcvarsall amd64_arm`
 
+<br>
 
-
-
-
-```bash
-# 微软
-devenv："C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\devenv.com"  编译项目实例
-vcvarsall.bat "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat" 初始化 msvc 交叉编译的环境（x86/x64）
-```
+> **微软 MSVC**
+>
+> devenv："C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\devenv.com"  编译项目实例
+> vcvarsall.bat "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat" 初始化 msvc 交叉编译的环境（x86/x64）
 

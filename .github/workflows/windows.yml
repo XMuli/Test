@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'CMakeLists.txt'
-      - 'src/**'
+      - '**'
       - '.github/workflows/windows.yml'
   pull_request:
     paths:
