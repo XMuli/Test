@@ -33,30 +33,21 @@ jobs:
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
-      - name: WindowsCacheQt  # 使用缓存Qt安装
-        id: WindowsCacheQt
-        uses: actions/cache@v2
+      - name: Cache Qt  # 使用缓存安装Qt模块
+        id: cache-qt
+        uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
         with:
-          path: ../Qt/${{ matrix.qt_ver }}/${{ matrix.qt_arch_install }}
-          key: ${{ runner.os }}-Qt/${{ matrix.qt_ver }}/${{ matrix.qt_arch }}
-
-      - name: setupQt # 添加缓存的Qt文件所没有的环境变量
-        if: steps.WindowsCacheQt.outputs.cache-hit == 'true'
-        shell: pwsh
-        env:
-          QtPath: ../Qt/${{ matrix.qt_ver }}/${{ matrix.qt_arch_install }}
-        run: |
-          $qt_Path=${{ env.QtPath }}
-          echo "::set-env name=Qt5_Dir::$qt_Path"
-          echo "::add-path::$qt_Path/bin"
+          path: ../Qt
+          key: ${{ runner.os }}-QtCache
       
       - name: Install Qt
         if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
-        uses: jurplel/install-qt-action@v2.13.0
+        uses: jurplel/install-qt-action@v2
         with:
           version: ${{ matrix.qt_ver }}
           arch: ${{ matrix.qt_arch }}
-          cached: 'false'
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          set-env: true
       
       - uses: actions/checkout@v2
         with:
