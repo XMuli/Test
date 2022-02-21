@@ -70,6 +70,7 @@ jobs:
         id: msvc-build
         shell: cmd
         run: |
+          chdir
           dir
           mkdir bin
           cd ${{ github.workspace }}
@@ -79,11 +80,12 @@ jobs:
           cmake -G "Visual Studio 16 2019" -A Win32 ../src
           devenv GitHubAction.sln /Build "Release|Win32"
 
-          
+          chdir
           Xcopy "Release" "${{ github.workspace }}/../bin" /E/H/C/I
 
           windeployqt "${{ github.workspace }}/../bin/${{ env.targetName }}.exe"
           cd "${{ github.workspace }}/../bin/"
+          chdir
           dir 
      
       - name: NameVersion
@@ -92,25 +94,24 @@ jobs:
         run: |
           $productVersion="${{ github.ref }}".substring("refs/tags/".length)
           echo "productVersion=$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
+          $productName="${{ env.targetName }}-$productVersion-beta-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
-          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
       - name: Package
         id: Package      
-        if: startsWith(github.event.ref, 'refs/tags/')
+        # if: startsWith(github.event.ref, 'refs/tags/')
         shell: pwsh
         run: |
           pwd
           dir
-          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productNameVersion }}.zip
+          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productName }}.zip
           dir
         
       # tag上传Release
       - name: uploadRelease
-        if: startsWith(github.event.ref, 'refs/tags/')
+        # if: startsWith(github.event.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.upload_release }}
@@ -118,7 +119,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ${{ env.productNameVersion }}.zip
+            ${{ env.productName }}.zip
             ${{ github.workspace }}/LICENSE
           tag: ${{ github.ref }}
           overwrite: true 
