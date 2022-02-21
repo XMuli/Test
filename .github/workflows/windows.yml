@@ -89,11 +89,9 @@ jobs:
             devenv "${{ env.targetName }}.sln" /Build "Release|x64"
           )
           
-          Xcopy "Release" "${{ github.workspace }}/bin" /E/H/C/I
 
-          cd ${{ github.workspace }}
-          windeployqt "${{ github.workspace }}/bin/${{ env.targetName }}.exe"
-          cd "${{ github.workspace }}/bin/"
+          cd ${{ github.workspace }}/build/Release
+          echo "333333333333333------------------a3"
           chdir
           dir
      
@@ -106,22 +104,23 @@ jobs:
           $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
-          echo "productNameVersion=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
       - name: Package
         id: Package      
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         shell: pwsh
         run: |
-          pwd
+          Copy-Item -Path build/Release/* -Destination bin/
+          windeployqt bin/${{ env.targetName }}.exe
           dir
-          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productNameVersion }}-x86.zip
-          dir
+          Compress-Archive -Path ${{ github.workspace }}/bin/* -Destination ${{ env.productNameVersion }}.zip
         
       # tag上传Release
+      # tag上传Release
       - name: uploadRelease
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.upload_release }}
