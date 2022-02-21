@@ -35,12 +35,12 @@ jobs:
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
-      - name: Cache Qt  # 使用缓存安装Qt模块
-        id: cache-qt
-        uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
-        with:
-          path: ../Qt
-          key: ${{ runner.os }}-QtCache
+      # - name: Cache Qt  # 使用缓存安装Qt模块
+        # id: cache-qt
+        # uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
+        # with:
+          # path: ../Qt
+          # key: ${{ runner.os }}-QtCache
       
       - name: Install Qt
         if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
@@ -48,7 +48,7 @@ jobs:
         with:
           version: ${{ matrix.qt_ver }}
           arch: ${{ matrix.qt_arch }}
-          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          # cached: ${{ steps.cache-qt.outputs.cache-hit }}
           set-env: true
       
       - uses: actions/checkout@v2
@@ -89,12 +89,21 @@ jobs:
             devenv "${{ env.targetName }}.sln" /Build "Release|x64"
           )
           
+          cd Release
+          echo "------------------a1"
+          chdir
+          echo "------------------a2"
+          dir
+          
           Xcopy "Release" "${{ github.workspace }}/bin" /E/H/C/I
+          
 
-          cd ${{ github.workspace }}
+          ${{ github.workspace }}/bin
           windeployqt "${{ github.workspace }}/bin/${{ env.targetName }}.exe"
           cd "${{ github.workspace }}/bin/"
+          echo "------------------a3"
           chdir
+          echo "------------------a4"
           dir
      
       - name: NameVersion
@@ -106,12 +115,12 @@ jobs:
           $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
-          echo "productNameVersion=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
       - name: Package
         id: Package      
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         shell: pwsh
         run: |
           pwd
@@ -121,7 +130,7 @@ jobs:
         
       # tag上传Release
       - name: uploadRelease
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.upload_release }}
