@@ -5,6 +5,7 @@
 **简介：** Qt 5.12.11 + MSVC 2019 + Win10 21H1 + CMake 3.21.1 仅使用命令行生成一个 Qt 程序
 
 
+
 ```bash
 // cmd 编译 Qt 64 位项目 
 "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat" x64
