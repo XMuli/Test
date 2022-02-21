@@ -98,7 +98,7 @@ jobs:
           $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
-          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "productNameVersion=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
       - name: Package
@@ -123,5 +123,6 @@ jobs:
           files: |
             ${{ env.productNameVersion }}.zip
             ${{ github.workspace }}/LICENSE
-          tag: ${{ github.ref }}
+          # tag: ${{ github.ref }}
+          tag: v0.05
           overwrite: true 
