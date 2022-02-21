@@ -20,6 +20,8 @@ jobs:
     strategy:
       matrix: # 矩阵配置
         qt_ver: [5.12.11]     # Qt 5.12.11 参考 https://mirrors.cloud.tencent.com/qt/online/qtsdkrepository/windows_x86/desktop/qt5_51211
+        qt_target: [desktop]
+        qt_arch: [win32_msvc2017, win64_msvc2017_64]
         include:
           - qt_arch: win32_msvc2017
             msvc_arch: x86
@@ -33,20 +35,20 @@ jobs:
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
-      # - name: Cache Qt  # 使用缓存安装Qt模块
-      #   id: cache-qt
-      #   uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
-      #   with:
-      #     path: ../Qt
-      #     key: ${{ runner.os }}-QtCache
+      - name: Cache Qt  # 使用缓存安装Qt模块
+        id: cache-qt
+        uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
+        with:
+          path: ../Qt
+          key: ${{ runner.os }}-QtCache
       
       - name: Install Qt
         if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
         uses: jurplel/install-qt-action@v2
         with:
           version: ${{ matrix.qt_ver }}
-          arch: ${{ matrix.qt_arch }}
-          # cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          arch: [win64_msvc2017_64, win32_msvc2017]
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
           set-env: true
       
       - uses: actions/checkout@v2
@@ -71,35 +73,27 @@ jobs:
         shell: cmd
         run: |
           cd ${{ github.workspace }}
-          mkdir bin_x86
-          mkdir bin_x64
+          mkdir bin
+          mkdir build
+
+          cd build
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.msvc_arch }}
+
+          if ${{ matrix.msvc_arch }} == "x86" (
+            cmake -G "Visual Studio 16 2019" -A Win32 ../src
+            devenv "${{ env.targetName }}.sln" /Build "Release|Win32"
+          ) else (
+            cmake -G "Visual Studio 16 2019" -A x64 ../src
+            devenv "${{ env.targetName }}.sln" /Build "Release|x64"
+          )
           
-          chdir
-          dir
-          mkdir build_x86
-          cd build_x86
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86
-          cmake -G "Visual Studio 16 2019" -A Win32 ../src
-          devenv "${{ env.targetName }}.sln" /Build "Release|Win32"
-          Xcopy "Release" "${{ github.workspace }}/bin_x86" /E/H/C/I
+          Xcopy "Release" "${{ github.workspace }}/bin" /E/H/C/I
 
           cd ${{ github.workspace }}
-          mkdir build_x64
-          cd build_x64
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          cmake -G "Visual Studio 16 2019" -A x64 ../src
-          devenv "${{ env.targetName }}.sln" /Build "Release|x64"
-          Xcopy "Release" "${{ github.workspace }}/bin_x64" /E/H/C/I
-
-          windeployqt "${{ github.workspace }}/bin_x86/${{ env.targetName }}.exe"
-          windeployqt "${{ github.workspace }}/bin_x64/${{ env.targetName }}.exe"
-          cd "${{ github.workspace }}/bin_x86/"
+          windeployqt "${{ github.workspace }}/bin/${{ env.targetName }}.exe"
+          cd "${{ github.workspace }}/bin/"
           chdir
-          dir 
-
-          cd "${{ github.workspace }}/bin_x64/"
-          chdir
-          dir 
+          dir
      
       - name: NameVersion
         id: NameVersion
@@ -120,8 +114,7 @@ jobs:
         run: |
           pwd
           dir
-          Compress-Archive -Path "bin_x86/*" -DestinationPath ${{ env.productNameVersion }}-x86.zip
-          Compress-Archive -Path "bin_x64/*" -DestinationPath ${{ env.productNameVersion }}-x64.zip
+          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productNameVersion }}-x86.zip
           dir
         
       # tag上传Release
@@ -134,8 +127,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ${{ env.productNameVersion }}-x86.zip
-            ${{ env.productNameVersion }}-x64.zip
+            ${{ env.productNameVersion }}.zip
             ${{ github.workspace }}/LICENSE
           tag: ${{ github.ref }}
           overwrite: true 
