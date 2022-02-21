@@ -79,10 +79,12 @@ jobs:
           cd build
           call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.msvc_arch }}
 
-          if ${{ matrix.msvc_arch }} == "x86" (
+          if "${{ matrix.msvc_arch }}" == "x86" (
+            echo "1111111111------------"
             cmake -G "Visual Studio 16 2019" -A Win32 ../src
             devenv "${{ env.targetName }}.sln" /Build "Release|Win32"
           ) else (
+            echo "2222222222------------"
             cmake -G "Visual Studio 16 2019" -A x64 ../src
             devenv "${{ env.targetName }}.sln" /Build "Release|x64"
           )
