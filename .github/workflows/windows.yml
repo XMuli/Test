@@ -70,10 +70,10 @@ jobs:
         id: msvc-build
         shell: cmd
         run: |
+          cd ${{ github.workspace }}
           chdir
           dir
           mkdir bin
-          cd ${{ github.workspace }}
           mkdir build
           cd build
           call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.msvc_arch }}
@@ -81,10 +81,11 @@ jobs:
           devenv GitHubAction.sln /Build "Release|Win32"
 
           chdir
-          Xcopy "Release" "${{ github.workspace }}/../bin" /E/H/C/I
+          Xcopy "Release" "${{ github.workspace }}/bin" /E/H/C/I
+          chdir
 
-          windeployqt "${{ github.workspace }}/../bin/${{ env.targetName }}.exe"
-          cd "${{ github.workspace }}/../bin/"
+          windeployqt "${{ github.workspace }}/bin/${{ env.targetName }}.exe"
+          cd "${{ github.workspace }}/bin/"
           chdir
           dir 
      
@@ -94,9 +95,10 @@ jobs:
         run: |
           $productVersion="${{ github.ref }}".substring("refs/tags/".length)
           echo "productVersion=$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $productName="${{ env.targetName }}-$productVersion-beta-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
+          $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
+          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
       - name: Package
@@ -106,7 +108,7 @@ jobs:
         run: |
           pwd
           dir
-          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productName }}.zip
+          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productNameVersion }}.zip
           dir
         
       # tag上传Release
@@ -119,7 +121,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ${{ env.productName }}.zip
+            ${{ env.productNameVersion }}.zip
             ${{ github.workspace }}/LICENSE
           tag: ${{ github.ref }}
           overwrite: true 
