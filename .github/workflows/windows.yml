@@ -35,12 +35,12 @@ jobs:
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
-      - name: Cache Qt  # 使用缓存安装Qt模块
-        id: cache-qt
-        uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
-        with:
-          path: ../Qt
-          key: ${{ runner.os }}-QtCache
+      # - name: Cache Qt  # 使用缓存安装Qt模块
+        # id: cache-qt
+        # uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
+        # with:
+          # path: ../Qt
+          # key: ${{ runner.os }}-QtCache
       
       - name: Install Qt
         if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
@@ -48,7 +48,7 @@ jobs:
         with:
           version: ${{ matrix.qt_ver }}
           arch: ${{ matrix.qt_arch }}
-          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          # cached: ${{ steps.cache-qt.outputs.cache-hit }}
           set-env: true
       
       - uses: actions/checkout@v2
@@ -89,11 +89,9 @@ jobs:
             devenv "${{ env.targetName }}.sln" /Build "Release|x64"
           )
           
-          Xcopy "Release" "${{ github.workspace }}/bin" /E/H/C/I
 
-          cd ${{ github.workspace }}
-          windeployqt "${{ github.workspace }}/bin/${{ env.targetName }}.exe"
-          cd "${{ github.workspace }}/bin/"
+          cd ${{ github.workspace }}/build/Release
+          echo "333333333333333------------------a3"
           chdir
           dir
      
@@ -106,22 +104,30 @@ jobs:
           $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
-          echo "productNameVersion=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
       - name: Package
         id: Package      
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         shell: pwsh
         run: |
-          pwd
-          dir
-          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productNameVersion }}-x86.zip
+          Copy-Item -Path build/Release/* -Destination bin/
+          dir bin
+          echo "--------------------------1"
+          windeployqt bin/${{ env.targetName }}.exe
+          
+          dir bin
+          echo "--------------------------2"
+
+          Compress-Archive -Path ${{ github.workspace }}/bin/* -Destination ${{ env.productNameVersion }}.zip
+          
           dir
         
       # tag上传Release
+      # tag上传Release
       - name: uploadRelease
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.upload_release }}
