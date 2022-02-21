@@ -89,11 +89,9 @@ jobs:
             devenv "${{ env.targetName }}.sln" /Build "Release|x64"
           )
           
-          Xcopy "Release" "${{ github.workspace }}/bin" /E/H/C/I
 
-          cd ${{ github.workspace }}
-          windeployqt "${{ github.workspace }}/bin/${{ env.targetName }}.exe"
-          cd "${{ github.workspace }}/bin/"
+          cd ${{ github.workspace }}/build/Release
+          echo "333333333333333------------------a3"
           chdir
           dir
      
@@ -106,22 +104,37 @@ jobs:
           $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
-          echo "productNameVersion=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
       - name: Package
         id: Package      
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         shell: pwsh
         run: |
+          echo "------------------a1"
           pwd
+          echo "------------------a2"
+          Copy-Item -Path build/Release/* -Destination bin/
+          
+          cd build/Release
           dir
-          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productNameVersion }}-x86.zip
+          echo "------------------a3"
+          cd ${{ github.workspace }}/bin
+          dir
+          echo "------------------a4"
+          windeployqt ${{ github.workspace }}/bin/${{ env.targetName }}.exe
+          dir
+          echo "------------------a5"
+          
+          Compress-Archive -Path ${{ github.workspace }}/bin/* -Destination ${{ env.productNameVersion }}.zip
+          echo "------------------a5"
+          cd ${{ github.workspace }}
           dir
         
       # tag上传Release
       - name: uploadRelease
-        # if: startsWith(github.event.ref, 'refs/tags/')
+        if: startsWith(github.event.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.upload_release }}
