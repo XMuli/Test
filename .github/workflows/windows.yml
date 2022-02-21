@@ -70,17 +70,21 @@ jobs:
         id: msvc-build
         shell: cmd
         run: |
+          dir
+          mkdir bin
           cd ${{ github.workspace }}
           mkdir build
           cd build
           call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.msvc_arch }}
           cmake -G "Visual Studio 16 2019" -A Win32 ../src
           devenv GitHubAction.sln /Build "Release|Win32"
+
           
-          windeployqt ./Release/${{ env.targetName }}.exe
-          dir
-          cd Release
-          dir
+          Xcopy "Release" "${{ github.workspace }}/../bin" /E/H/C/I
+
+          windeployqt "${{ github.workspace }}/../bin/${{ env.targetName }}.exe"
+          cd "${{ github.workspace }}/../bin/"
+          dir 
      
       - name: NameVersion
         id: NameVersion
@@ -99,11 +103,11 @@ jobs:
         if: startsWith(github.event.ref, 'refs/tags/')
         shell: pwsh
         run: |
-          cd ${{ github.workspace }}/build
-          Compress-Archive -Path ${{ github.workspace }}/build/Release/* -DestinationPath ${{ env.productNameVersion }}.zip
+          pwd
+          dir
+          Compress-Archive -Path "bin/*" -DestinationPath ${{ env.productNameVersion }}.zip
           dir
         
-      
       # tag上传Release
       - name: uploadRelease
         if: startsWith(github.event.ref, 'refs/tags/')
@@ -114,7 +118,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ${{ github.workspace }}/build/${{ env.productNameVersion }}.zip
+            ${{ env.productNameVersion }}.zip
             ${{ github.workspace }}/LICENSE
           tag: ${{ github.ref }}
           overwrite: true 
