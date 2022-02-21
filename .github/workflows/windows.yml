@@ -47,7 +47,7 @@ jobs:
         uses: jurplel/install-qt-action@v2
         with:
           version: ${{ matrix.qt_ver }}
-          arch: [win64_msvc2017_64, win32_msvc2017]
+          arch: ${{ matrix.qt_arch }}
           cached: ${{ steps.cache-qt.outputs.cache-hit }}
           set-env: true
       
