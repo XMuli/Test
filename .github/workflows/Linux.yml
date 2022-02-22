@@ -1,4 +1,4 @@
-name: Linux-Debian
+name: Linux(Debian)
 on: 
   # push代码时触发workflow
   push:
@@ -21,19 +21,19 @@ jobs:
         qt_ver: [5.12.11]    # 参考: https://mirrors.cloud.tencent.com/qt/online/qtsdkrepository/linux_x64/desktop/qt5_51211
         qt_target: [desktop]
         qt_arch: [gcc_64]
-        os: [ubuntu-20.04]  # ubuntu-18.04
+        os: [ubuntu-18.04, ubuntu-20.04]
     env:
       targetName: GitHubAction
       targetOS: debian
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
-      - NAME: CACHE QT  # 使用缓存安装QT模块
-        ID: CACHE-QT
-        USES: ACTIONS/CACHE@V1  # NOT V2! 参见 HTTPS://GITHUB.COM/JURPLEL/INSTALL-QT-ACTION
-        WITH:
-          PATH: ../QT
-          KEY: ${{ RUNNER.OS }}-QTCACHE
+      # - name: Cache Qt  # 使用缓存安装Qt模块
+        # id: cache-qt
+        # uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
+        # with:
+          # path: ../Qt
+          # key: ${{ runner.os }}-QtCache
       
       - name: Install Qt
         if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
@@ -41,7 +41,7 @@ jobs:
         with:
           version: ${{ matrix.qt_ver }}
           arch: ${{ matrix.qt_arch }}
-          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          # cached: ${{ steps.cache-qt.outputs.cache-hit }}
           set-env: true
       
       - uses: actions/checkout@v2
@@ -87,28 +87,18 @@ jobs:
         if: startsWith(github.event.ref, 'refs/tags/')
         shell: bash
         run: |
-          ls -al
           mkdir bin
           cp -r build/${{ env.targetName }} bin
           cp -r debian/* bin
           
-          ls -al
-          echo "------------------a1"
           sudo chmod 777 bin/ldd.sh
           sudo chmod 777 bin/GitHubAction.sh
           
           cd bin
-          echo "------------------a2"
-          
           ./ldd.sh ${{ env.targetName }}
-          
-          ls -al
-          echo "------------------a3"
-          
           cd ..
           zip -q -r ${{ env.productNameVersion }}.zip bin/*
-          
-          ls -al
+
         
       # tag上传Release
       - name: uploadRelease
