@@ -65,10 +65,7 @@ jobs:
         id: gcc-build
         shell: bash
         run: |
-          cd ${{ github.workspace }}
           mkdir build
-          mkdir bin
-
           cd build
           cmake ../src
           make -j8
@@ -84,37 +81,39 @@ jobs:
           
           echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      # tag打为.zip包 
-      # - name: Package
-        # id: Package      
-        # if: startsWith(github.event.ref, 'refs/tags/')
-        # shell: pwsh
-        # run: |
+      tag打为.zip包 
+      - name: Package
+        id: Package      
+        if: startsWith(github.event.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          mkdir bin
+          cp build/${{ env.targetName }} bin
+          cp build/debian/* bin
           
-          # Copy-Item -Path build/${{ env.targetName }} -Destination bin/
-          # dir bin
-          # echo "--------------------------1"
-          # windeployqt bin/${{ env.targetName }}.exe
+          cd bin
+          sudo chmod 777 bin/ldd.sh
+          sudo chmod 777 GitHubAction.sh
+          ./ldd.sh GitHubAction
+          ls
           
-          # dir bin
-          # echo "--------------------------2"
-
-          # Compress-Archive -Path ${{ github.workspace }}/bin/* -Destination ${{ env.productNameVersion }}.zip
+          cd ..
+          zip -q -r ${{ env.productNameVersion }}.zip bin/*
           
-          # dir
+          ls
         
-      # # tag上传Release
-      # # tag上传Release
-      # - name: uploadRelease
-        # if: startsWith(github.event.ref, 'refs/tags/')
-        # uses: softprops/action-gh-release@v1
-        # env:
-          # GITHUB_TOKEN: ${{ secrets.upload_release }}
-        # with:
-          # draft: false
-          # prerelease: false
-          # files: |
-            # ${{ env.productNameVersion }}.zip
-            # ${{ github.workspace }}/LICENSE
-          # tag: ${{ github.ref }}
-          # overwrite: true 
+      # tag上传Release
+      # tag上传Release
+      - name: uploadRelease
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.upload_release }}
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.productNameVersion }}.zip
+            ${{ github.workspace }}/LICENSE
+          tag: ${{ github.ref }}
+          overwrite: true 
