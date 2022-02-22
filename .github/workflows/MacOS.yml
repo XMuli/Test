@@ -1,16 +1,14 @@
-name: Linux(Debian)
+name: MacOS
 on: 
   # push代码时触发workflow
   push:
     paths:
       - 'CMakeLists.txt'
       - '**'
-      - '.github/workflows/windows.yml'
   pull_request:
     paths:
       - 'CMakeLists.txt'
       - 'src/**'
-      - '.github/workflows/windows.yml' 
 jobs:
   build:
     name: Build
@@ -18,13 +16,13 @@ jobs:
     runs-on:  ${{ matrix.os }}
     strategy:
       matrix: # 矩阵配置
-        qt_ver: [5.12.11]    # 参考: https://mirrors.cloud.tencent.com/qt/online/qtsdkrepository/linux_x64/desktop/qt5_51211
+        qt_ver: [5.12.11]    # 参考: https://mirrors.cloud.tencent.com/qt/online/qtsdkrepository/mac_x64/desktop/qt5_5111
         qt_target: [desktop]
         qt_arch: [gcc_64]
-        os: [ubuntu-18.04, ubuntu-20.04]
+        os: [macos-10.15] # macos-latest 即 macos-11
     env:
       targetName: GitHubAction
-      targetOS: debian
+      targetOS: MacOS
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
@@ -36,7 +34,7 @@ jobs:
           # key: ${{ runner.os }}-QtCache
       
       - name: Install Qt
-        if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
+        # if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
         uses: jurplel/install-qt-action@v2
         with:
           version: ${{ matrix.qt_ver }}
@@ -54,13 +52,6 @@ jobs:
           # git submodule init
           # git submodule update
           
-      # - name: cache-msvc-build
-        # id: cache-msvc-build
-        # uses: actions/cache@v1
-        # with:
-            # path: msvc-build-install
-            # key: msvc-build-windows-install
-
       - name: gcc-build
         id: gcc-build
         shell: bash
@@ -69,6 +60,7 @@ jobs:
           cd build
           cmake ../src
           make -j8
+
      
       - name: NameVersion
         id: NameVersion
@@ -87,18 +79,31 @@ jobs:
         if: startsWith(github.event.ref, 'refs/tags/')
         shell: bash
         run: |
+        
           mkdir bin
-          cp -r build/${{ env.targetName }} bin
-          cp -r debian/* bin
+          ls -1
+          echo "--------------a1"
+          cp -R build/${{ env.targetName }} bin/${{ env.targetName }}
           
-          sudo chmod 777 bin/ldd.sh
-          sudo chmod 777 bin/GitHubAction.sh
+          echo "--------------a2"
+          ls -l bin
           
-          cd bin
-          ./ldd.sh ${{ env.targetName }}
-          cd ..
-          zip -q -r ${{ env.productNameVersion }}.zip bin/*
+          # macdeployqt bin/${{ env.targetName }}.app
+          # 下一行删除 .app 试试
+          macdeployqt bin/${{ env.targetName }}.app -dmg  
+          
+          echo "--------------a3"
+          ls -l bin
+          
 
+          # zip -q -r ${{ env.productNameVersion }}.zip bin/${{ env.targetName }}.app
+
+      # 上传artifacts          
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.targetName }}_${{ matrix.os }}_${{matrix.qt_ver}}.zip
+          path: ${{ env.productNameVersion }}.app
+          
         
       # tag上传Release
       - name: uploadRelease
@@ -110,7 +115,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ${{ env.productNameVersion }}.zip
+            ${{ env.productNameVersion }}.dmg
             ${{ github.workspace }}/LICENSE
           tag: ${{ github.ref }}
           overwrite: true 
