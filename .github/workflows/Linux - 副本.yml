@@ -1,4 +1,4 @@
-name: Windows
+name: Linux(debian)
 on: 
   # push代码时触发workflow
   push:
@@ -14,33 +14,26 @@ on:
 jobs:
   build:
     name: Build
-    # 运行平台，windows-latest目前是windows server 2022，考虑稳定暂用 2019，
-    # 参考文档 https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
-    runs-on: windows-2019  
+    # 运行平台
+    runs-on:  ${{ matrix.os }}
     strategy:
       matrix: # 矩阵配置
-        qt_ver: [5.12.11]     # Qt 5.12.11 参考 https://mirrors.cloud.tencent.com/qt/online/qtsdkrepository/windows_x86/desktop/qt5_51211
+        qt_ver: [5.12.11]    # 参考: https://mirrors.cloud.tencent.com/qt/online/qtsdkrepository/linux_x64/desktop/qt5_51211
         qt_target: [desktop]
-        qt_arch: [win32_msvc2017, win64_msvc2017_64]
-        include:
-          - qt_arch: win32_msvc2017
-            msvc_arch: x86
-            qt_arch_install: msvc2017
-          - qt_arch: win64_msvc2017_64
-            msvc_arch: x64
-            qt_arch_install: msvc2017_64
+        qt_arch: [gcc_64]
+        os: [ubuntu-20.04]  # ubuntu-18.04
     env:
       targetName: GitHubAction
-      targetOS: windows
+      targetOS: debian
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
-      # - name: Cache Qt  # 使用缓存安装Qt模块
-        # id: cache-qt
-        # uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
-        # with:
-          # path: ../Qt
-          # key: ${{ runner.os }}-QtCache
+      - NAME: CACHE QT  # 使用缓存安装QT模块
+        ID: CACHE-QT
+        USES: ACTIONS/CACHE@V1  # NOT V2! 参见 HTTPS://GITHUB.COM/JURPLEL/INSTALL-QT-ACTION
+        WITH:
+          PATH: ../QT
+          KEY: ${{ RUNNER.OS }}-QTCACHE
       
       - name: Install Qt
         if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
@@ -48,7 +41,7 @@ jobs:
         with:
           version: ${{ matrix.qt_ver }}
           arch: ${{ matrix.qt_arch }}
-          # cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
           set-env: true
       
       - uses: actions/checkout@v2
@@ -68,32 +61,14 @@ jobs:
             # path: msvc-build-install
             # key: msvc-build-windows-install
 
-      - name: msvc-build
-        id: msvc-build
-        shell: cmd
+      - name: gcc-build
+        id: gcc-build
+        shell: bash
         run: |
-          cd ${{ github.workspace }}
-          mkdir bin
           mkdir build
-
           cd build
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.msvc_arch }}
-
-          if "${{ matrix.msvc_arch }}" == "x86" (
-            echo "1111111111------------"
-            cmake -G "Visual Studio 16 2019" -A Win32 ../src
-            devenv "${{ env.targetName }}.sln" /Build "Release|Win32"
-          ) else (
-            echo "2222222222------------"
-            cmake -G "Visual Studio 16 2019" -A x64 ../src
-            devenv "${{ env.targetName }}.sln" /Build "Release|x64"
-          )
-          
-
-          cd ${{ github.workspace }}/build/Release
-          echo "333333333333333------------------a3"
-          chdir
-          dir
+          cmake ../src
+          make -j8
      
       - name: NameVersion
         id: NameVersion
@@ -101,7 +76,7 @@ jobs:
         run: |
           $productVersion="${{ github.ref }}".substring("refs/tags/".length)
           echo "productVersion=$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
+          $productName="${{ env.targetName }}-${{ env.targetOS }}-x64"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
           echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -110,21 +85,31 @@ jobs:
       - name: Package
         id: Package      
         if: startsWith(github.event.ref, 'refs/tags/')
-        shell: pwsh
+        shell: bash
         run: |
-          Copy-Item -Path build/Release/* -Destination bin/
-          dir bin
-          echo "--------------------------1"
-          windeployqt bin/${{ env.targetName }}.exe
+          ls -al
+          mkdir bin
+          cp -r build/${{ env.targetName }} bin
+          cp -r debian/* bin
           
-          dir bin
-          echo "--------------------------2"
-
-          Compress-Archive -Path ${{ github.workspace }}/bin/* -Destination ${{ env.productNameVersion }}.zip
+          ls -al
+          echo "------------------a1"
+          sudo chmod 777 bin/ldd.sh
+          sudo chmod 777 bin/GitHubAction.sh
           
-          dir
+          cd bin
+          echo "------------------a2"
+          
+          ./ldd.sh ${{ env.targetName }}
+          
+          ls -al
+          echo "------------------a3"
+          
+          cd ..
+          zip -q -r ${{ env.productNameVersion }}.zip bin/*
+          
+          ls -al
         
-      # tag上传Release
       # tag上传Release
       - name: uploadRelease
         if: startsWith(github.event.ref, 'refs/tags/')
