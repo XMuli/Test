@@ -28,12 +28,12 @@ jobs:
       # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       
     steps:
-      # - name: Cache Qt  # 使用缓存安装Qt模块
-        # id: cache-qt
-        # uses: actions/cache@v1  # not v2! 参见 https://github.com/jurplel/install-qt-action
-        # with:
-          # path: ../Qt
-          # key: ${{ runner.os }}-QtCache
+      - NAME: CACHE QT  # 使用缓存安装QT模块
+        ID: CACHE-QT
+        USES: ACTIONS/CACHE@V1  # NOT V2! 参见 HTTPS://GITHUB.COM/JURPLEL/INSTALL-QT-ACTION
+        WITH:
+          PATH: ../QT
+          KEY: ${{ RUNNER.OS }}-QTCACHE
       
       - name: Install Qt
         if: steps.WindowsCacheQt.outputs.cache-hit != 'true'
@@ -41,7 +41,7 @@ jobs:
         with:
           version: ${{ matrix.qt_ver }}
           arch: ${{ matrix.qt_arch }}
-          # cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
           set-env: true
       
       - uses: actions/checkout@v2
@@ -65,10 +65,7 @@ jobs:
         id: gcc-build
         shell: bash
         run: |
-          cd ${{ github.workspace }}
           mkdir build
-          mkdir bin
-
           cd build
           cmake ../src
           make -j8
@@ -79,42 +76,51 @@ jobs:
         run: |
           $productVersion="${{ github.ref }}".substring("refs/tags/".length)
           echo "productVersion=$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $productName="${{ env.targetName }}-${{ env.targetOS }}-${{ matrix.msvc_arch }}"
+          $productName="${{ env.targetName }}-${{ env.targetOS }}-x64"
           echo "productName=$productName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           
           echo "productNameVersion=$productName-$productVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # tag打为.zip包 
-      # - name: Package
-        # id: Package      
-        # if: startsWith(github.event.ref, 'refs/tags/')
-        # shell: pwsh
-        # run: |
+      - name: Package
+        id: Package      
+        if: startsWith(github.event.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          ls -al
+          mkdir bin
+          cp -r build/${{ env.targetName }} bin
+          cp -r debian/* bin
           
-          # Copy-Item -Path build/${{ env.targetName }} -Destination bin/
-          # dir bin
-          # echo "--------------------------1"
-          # windeployqt bin/${{ env.targetName }}.exe
+          ls -al
+          echo "------------------a1"
+          sudo chmod 777 bin/ldd.sh
+          sudo chmod 777 bin/GitHubAction.sh
           
-          # dir bin
-          # echo "--------------------------2"
-
-          # Compress-Archive -Path ${{ github.workspace }}/bin/* -Destination ${{ env.productNameVersion }}.zip
+          cd bin
+          echo "------------------a2"
           
-          # dir
+          ./ldd.sh ${{ env.targetName }}
+          
+          ls -al
+          echo "------------------a3"
+          
+          cd ..
+          zip -q -r ${{ env.productNameVersion }}.zip bin/*
+          
+          ls -al
         
-      # # tag上传Release
-      # # tag上传Release
-      # - name: uploadRelease
-        # if: startsWith(github.event.ref, 'refs/tags/')
-        # uses: softprops/action-gh-release@v1
-        # env:
-          # GITHUB_TOKEN: ${{ secrets.upload_release }}
-        # with:
-          # draft: false
-          # prerelease: false
-          # files: |
-            # ${{ env.productNameVersion }}.zip
-            # ${{ github.workspace }}/LICENSE
-          # tag: ${{ github.ref }}
-          # overwrite: true 
+      # tag上传Release
+      - name: uploadRelease
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.upload_release }}
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.productNameVersion }}.zip
+            ${{ github.workspace }}/LICENSE
+          tag: ${{ github.ref }}
+          overwrite: true 
